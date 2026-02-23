@@ -1,16 +1,11 @@
 import { useDeckContext } from "../context/DeckContext";
 import { formatSize, formatTimeDetailed } from "../utils/format";
 
-const formatTrackType = (trackType: string | undefined): string => {
-    if (!trackType) {
-        return "Unknown";
-    }
-
-    return trackType
+const formatTrackType = (trackType: string | undefined): string =>
+    (trackType || "Unknown")
         .replace(/^audio\//i, "")
         .replace(/[-_]+/g, " ")
         .toUpperCase();
-};
 
 const formatSampleRate = (sampleRate: number | undefined): string => {
     if (!sampleRate || sampleRate <= 0) {

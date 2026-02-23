@@ -56,12 +56,6 @@ export function WavePanel() {
     } | null>(null);
     const viewportMetricsRef = useRef<WaveViewportMetrics | null>(null);
     const [layoutRevision, setLayoutRevision] = useState(0);
-    const beatMetrics =
-        waveformData?.bpm === null || waveformData?.bpm === undefined
-            ? null
-            : {
-                  bpm: waveformData.bpm,
-              };
 
     useEffect(() => {
         const waveformZone = waveformCanvasRef.current?.closest(
@@ -344,7 +338,7 @@ export function WavePanel() {
                         }`}
                         onClick={() => setTimelineMode("beats")}
                         aria-pressed={timelineMode === "beats"}
-                        disabled={!beatMetrics}
+                        disabled={waveformData?.bpm == null || waveformData.bpm <= 0}
                     >
                         Beats/Bars
                     </button>

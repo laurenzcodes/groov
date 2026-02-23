@@ -163,14 +163,9 @@ function App() {
 
             const progressPct = Math.round(event.progress * 100);
             const stageLabel =
-                event.stage === "cache"
-                    ? "Cache"
-                    : event.stage === "probe"
-                      ? "Inspect"
-                      : event.stage === "decode"
-                        ? "Decode"
-                        : "Analyze";
-
+                { cache: "Cache", probe: "Inspect", decode: "Decode", analyze: "Analyze" }[
+                    event.stage
+                ] ?? "Analyze";
             setAnalysisLabel(`${stageLabel} ${progressPct}%`);
         });
     }, []);
@@ -212,12 +207,9 @@ function App() {
         cache.delete(item.id);
         cache.set(item.id, item);
 
-        while (cache.size > MAX_TRACK_CACHE_ITEMS) {
-            const oldestId = cache.keys().next().value;
-            if (!oldestId) {
-                break;
-            }
-            cache.delete(oldestId);
+        for (const id of cache.keys()) {
+            if (cache.size <= MAX_TRACK_CACHE_ITEMS) break;
+            cache.delete(id);
         }
     }, []);
 
@@ -280,18 +272,13 @@ function App() {
 
             if (event.code === "Space") {
                 event.preventDefault();
-                void (async () => {
-                    if (isPlaying) {
-                        pausePlayback();
-                    } else {
-                        const nearEnd =
-                            duration - startOffsetRef.current < 0.02;
-                        if (nearEnd) {
-                            setCurrentTime(0);
-                        }
-                        await startPlayback(startOffsetRef.current);
-                    }
-                })();
+                if (isPlaying) {
+                    pausePlayback();
+                } else {
+                    const nearEnd = duration - startOffsetRef.current < 0.02;
+                    if (nearEnd) setCurrentTime(0);
+                    void startPlayback(nearEnd ? 0 : startOffsetRef.current);
+                }
             }
 
             if (event.code === "ArrowLeft") {
