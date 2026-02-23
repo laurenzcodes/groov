@@ -53,6 +53,10 @@ export type GroovRPC = {
                 params: { id: string };
                 response: SelectedTrackPayload | null;
             };
+            removeTrackById: {
+                params: { id: string };
+                response: { ok: true };
+            };
             listTrackHistory: {
                 params: Record<string, never>;
                 response: TrackHistoryEntry[];

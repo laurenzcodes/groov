@@ -79,3 +79,9 @@ export const upsertHistory = async (
     next = next.sort((a, b) => b.createdAt - a.createdAt).slice(0, maxItems);
     await writeHistory(next);
 };
+
+export const removeHistoryById = async (id: string) => {
+    const existing = await readHistory();
+    const next = existing.filter((item) => item.id !== id);
+    await writeHistory(next);
+};

@@ -1,61 +1,67 @@
-# React + Tailwind + Vite Electrobun Template
+# Groov
 
-A fast Electrobun desktop app template with React, Tailwind CSS, and Vite for hot module replacement (HMR).
+![Groov app preview](src/shared/preview.png)
 
-## Getting Started
+Groov is a desktop audio deck monitor built with Electrobun + React.  
+Load a track, inspect a high-resolution waveform, detect tempo/beat grid, and jump around quickly with DJ-style transport controls.
+
+## Features
+
+- Open tracks from file picker or drag-and-drop
+- Waveform rendering with detailed main view + minimap overview
+- Tempo and beat/bar detection (BPM + beat offset)
+- Time and beat/bar timeline modes
+- Fast navigation controls:
+  - Play/pause
+  - +/- 10s
+  - +/- 1 beat
+  - +/- 1 bar
+  - Cue set/jump
+- Track history with quick reload and removal
+- Waveform analysis caching for faster re-opens
+- Re-analyze current track on demand
+
+## Prerequisites
+
+- [Bun](https://bun.sh/)
+- `ffmpeg` and `ffprobe` available on your `PATH` (required for waveform and beat analysis)
+
+## Development
 
 ```bash
-# Install dependencies
 bun install
-
-# Development without HMR (uses bundled assets)
-bun run dev
 
 # Development with HMR (recommended)
 bun run dev:hmr
 
-# Build for production
+# Development without HMR
+bun run dev
+```
+
+When using HMR, Vite runs on `http://localhost:5173` and the desktop app connects to it automatically.
+
+## Build
+
+```bash
+# Build app
 bun run build
 
-# Build for production release
+# Build production channel
 bun run build:prod
 ```
 
-## How HMR Works
+## Keyboard Shortcuts
 
-When you run `bun run dev:hmr`:
-
-1. **Vite dev server** starts on `http://localhost:5173` with HMR enabled
-2. **Electrobun** starts and detects the running Vite server
-3. The app loads from the Vite dev server instead of bundled assets
-4. Changes to React components update instantly without full page reload
-
-When you run `bun run dev` (without HMR):
-
-1. Electrobun starts and loads from `views://mainview/index.html`
-2. You need to rebuild (`bun run build`) to see changes
+- `Space`: play/pause
+- `Left` / `Right`: seek -/+ 1 second
+- `Shift + Left` / `Shift + Right`: seek -/+ 10 seconds
+- `C`: set cue point
 
 ## Project Structure
 
+```text
+src/
+  bun/         # Main process, RPC handlers, analysis/cache/history
+  mainview/    # React UI (panels, waveform canvas, playback controls)
+  shared/      # Shared RPC types and assets
 ```
-├── src/
-│   ├── bun/
-│   │   └── index.ts        # Main process (Electrobun/Bun)
-│   └── mainview/
-│       ├── App.tsx         # React app component
-│       ├── main.tsx        # React entry point
-│       ├── index.html      # HTML template
-│       └── index.css       # Tailwind CSS
-├── electrobun.config.ts    # Electrobun configuration
-├── vite.config.ts          # Vite configuration
-├── tailwind.config.js      # Tailwind configuration
-└── package.json
-```
-
-## Customizing
-
-- **React components**: Edit files in `src/mainview/`
-- **Tailwind theme**: Edit `tailwind.config.js`
-- **Vite settings**: Edit `vite.config.ts`
-- **Window settings**: Edit `src/bun/index.ts`
-- **App metadata**: Edit `electrobun.config.ts`

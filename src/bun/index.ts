@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { BrowserView, BrowserWindow, Updater, Utils } from "electrobun/bun";
 import type { GroovRPC } from "../shared/rpc";
-import { readHistory, upsertHistory } from "./historyStore";
+import { readHistory, removeHistoryById, upsertHistory } from "./historyStore";
 import { loadTrackPayloadByPath } from "./trackPayloadCache";
 import { analyzeWaveform } from "./waveformAnalysis";
 import { readWaveformFromCache, writeWaveformToCache } from "./waveformCache";
@@ -157,6 +157,10 @@ const rpc = BrowserView.defineRPC<GroovRPC>({
                 }
 
                 return loadTrackPayloadByPath(target.path);
+            },
+            removeTrackById: async ({ id }) => {
+                await removeHistoryById(id);
+                return { ok: true } as const;
             },
             listTrackHistory: async () => readHistory(),
             upsertTrackHistory: async ({ entry, maxItems }) => {

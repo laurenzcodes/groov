@@ -37,6 +37,7 @@ type DeckContextValue = {
     jumpToCue: () => void;
     setVolume: (value: number) => void;
     loadTrackFromHistory: (historyId: string) => Promise<void>;
+    removeTrackFromHistory: (historyId: string) => Promise<void>;
     reanalyzeCurrentTrack: () => Promise<void>;
     setTimelineMode: (mode: TimelineMode) => void;
     onScrubStart: (ratio: number) => void;

@@ -29,6 +29,7 @@ export function LeftPanel() {
         trackHistory,
         activeTrackHistoryId,
         loadTrackFromHistory,
+        removeTrackFromHistory,
         reanalyzeCurrentTrack,
     } = useDeckContext();
 
@@ -85,27 +86,45 @@ export function LeftPanel() {
                             {trackHistory.map((item) => {
                                 const isActive = activeTrackHistoryId === item.id;
                                 return (
-                                    <button
+                                    <div
                                         key={item.id}
-                                        type="button"
-                                        className={`flex min-w-0 items-center justify-between gap-2 rounded-sm border px-2 py-1 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                                        className={`group flex min-w-0 items-center justify-between gap-2 rounded-sm border px-2 py-1 transition ${
                                             isActive
                                                 ? "border-cyan-600 bg-slate-800"
                                                 : "border-slate-700 bg-slate-900 hover:border-slate-500"
                                         }`}
-                                        onClick={() => {
-                                            void loadTrackFromHistory(item.id);
-                                        }}
-                                        disabled={isDecoding}
-                                        title={item.name}
                                     >
-                                        <span className="truncate text-xs text-slate-200">
-                                            {item.name}
-                                        </span>
-                                        <small className="shrink-0 font-mono text-[0.65rem] text-slate-400">
-                                            {formatTime(item.duration)}
-                                        </small>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            className="min-w-0 flex-1 text-left disabled:cursor-not-allowed disabled:opacity-45"
+                                            onClick={() => {
+                                                void loadTrackFromHistory(item.id);
+                                            }}
+                                            disabled={isDecoding}
+                                            title={item.name}
+                                        >
+                                            <span className="block truncate text-xs text-slate-200">
+                                                {item.name}
+                                            </span>
+                                        </button>
+                                        <div className="relative h-4 w-12 shrink-0">
+                                            <small className="absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[0.65rem] text-slate-400 transition-opacity group-hover:opacity-0 group-focus-within:opacity-0">
+                                                {formatTime(item.duration)}
+                                            </small>
+                                            <button
+                                                type="button"
+                                                className="absolute right-0 top-1/2 hidden h-4 w-4 -translate-y-1/2 items-center justify-center rounded-sm text-xs leading-none text-slate-300 transition-colors hover:bg-slate-700 hover:text-white group-hover:inline-flex group-focus-within:inline-flex disabled:cursor-not-allowed disabled:opacity-45"
+                                                onClick={() => {
+                                                    void removeTrackFromHistory(item.id);
+                                                }}
+                                                disabled={isDecoding}
+                                                aria-label={`Remove ${item.name} from history`}
+                                                title="Remove from history"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    </div>
                                 );
                             })}
                         </div>

@@ -231,6 +231,19 @@ function App() {
         [setAudioBuffer, setCurrentTime],
     );
 
+    const unloadTrack = useCallback(() => {
+        pausePlayback();
+        setAudioBuffer(null);
+        setWaveformData(null);
+        setTrackInfo(null);
+        setCurrentTime(0);
+        setCuePoint(null);
+        setActiveHistoryId(null);
+        setAnalysisLabel("Ready");
+        setAnalysisAction(null);
+        setError(null);
+    }, [pausePlayback, setAudioBuffer, setCurrentTime]);
+
     const upsertHistoryRecord = useCallback(
         async (
             id: string,
@@ -825,6 +838,33 @@ function App() {
         ],
     );
 
+    const removeTrackFromHistory = useCallback(
+        async (historyId: string) => {
+            if (isDecoding) {
+                return;
+            }
+
+            setError(null);
+            const wasActive = activeHistoryId === historyId;
+            if (wasActive) {
+                const previousToken = decodeTokenRef.current;
+                if (previousToken > 0) {
+                    void groovRpc.request.cancelWaveformAnalysis({
+                        token: previousToken,
+                    });
+                    decodeTokenRef.current = previousToken + 1;
+                }
+
+                decodedTrackCacheRef.current.delete(historyId);
+                unloadTrack();
+            }
+
+            await groovRpc.request.removeTrackById({ id: historyId });
+            await refreshHistory();
+        },
+        [isDecoding, activeHistoryId, unloadTrack, refreshHistory],
+    );
+
     const reanalyzeCurrentTrack = useCallback(async () => {
         if (isDecoding || !activeHistoryId) {
             return;
@@ -885,6 +925,7 @@ function App() {
             jumpToCue,
             setVolume: setOutputVolume,
             loadTrackFromHistory,
+            removeTrackFromHistory,
             reanalyzeCurrentTrack,
             setTimelineMode,
             onScrubStart,
@@ -923,6 +964,7 @@ function App() {
             jumpToCue,
             setOutputVolume,
             loadTrackFromHistory,
+            removeTrackFromHistory,
             reanalyzeCurrentTrack,
             onScrubStart,
             onScrubMove,
