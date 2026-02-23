@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import type { SelectedTrackPayload } from "../shared/rpc";
 import { AppFooter } from "./components/AppFooter";
 import { LeftPanel } from "./components/LeftPanel";
@@ -30,6 +36,73 @@ type DecodedTrackCacheItem = {
     waveformData: WaveformData;
 };
 
+const hasFilesInTransfer = (transfer: DataTransfer | null): boolean =>
+    Boolean(transfer && Array.from(transfer.types).includes("Files"));
+
+const decodeFileUriPath = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed.startsWith("file://")) {
+        return null;
+    }
+
+    try {
+        const url = new URL(trimmed);
+        const pathname = decodeURIComponent(url.pathname);
+        if (!pathname) {
+            return null;
+        }
+
+        if (/^\/[a-zA-Z]:/.test(pathname)) {
+            return pathname.slice(1);
+        }
+
+        return pathname;
+    } catch {
+        return null;
+    }
+};
+
+const extractDroppedFilePath = (transfer: DataTransfer | null): string | null => {
+    if (!transfer) {
+        return null;
+    }
+
+    const firstFile = transfer.files?.[0] as (File & { path?: string }) | undefined;
+    if (firstFile?.path) {
+        return firstFile.path;
+    }
+
+    const uriList = transfer.getData("text/uri-list");
+    if (uriList) {
+        for (const line of uriList.split("\n")) {
+            const candidate = line.trim();
+            if (!candidate || candidate.startsWith("#")) {
+                continue;
+            }
+
+            const decoded = decodeFileUriPath(candidate);
+            if (decoded) {
+                return decoded;
+            }
+        }
+    }
+
+    return decodeFileUriPath(transfer.getData("text/plain"));
+};
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+    }
+
+    return btoa(binary);
+};
+
 function App() {
     const {
         audioBuffer,
@@ -49,6 +122,7 @@ function App() {
     const scrubWasPlayingRef = useRef(false);
     const overviewWasPlayingRef = useRef(false);
     const decodeTokenRef = useRef(0);
+    const dragDepthRef = useRef(0);
     const decodedTrackCacheRef = useRef(
         new Map<string, DecodedTrackCacheItem>(),
     );
@@ -62,11 +136,12 @@ function App() {
     const [error, setError] = useState<string | null>(null);
     const [analysisLabel, setAnalysisLabel] = useState("Ready");
     const [analysisAction, setAnalysisAction] = useState<
-        "open" | "history" | "reanalyze" | null
+        "open" | "history" | "reanalyze" | "drop" | null
     >(null);
     const [trackHistory, setTrackHistory] = useState<TrackHistoryItem[]>([]);
     const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
     const [timelineMode, setTimelineMode] = useState<TimelineMode>("time");
+    const [isDragOver, setIsDragOver] = useState(false);
 
     const duration = audioBuffer?.duration ?? 0;
     const hasTrackLoaded = Boolean(audioBuffer);
@@ -255,7 +330,7 @@ function App() {
             payload: SelectedTrackPayload,
             options?: {
                 forceReanalyze?: boolean;
-                source?: "open" | "history" | "reanalyze";
+                source?: "open" | "history" | "reanalyze" | "drop";
             },
         ) => {
             const previousToken = decodeTokenRef.current;
@@ -406,6 +481,122 @@ function App() {
 
         await loadTrackPayload(payload, { source: "open" });
     }, [isDecoding, loadTrackPayload]);
+
+    const loadTrackFromPath = useCallback(
+        async (path: string) => {
+            if (isDecoding) {
+                return;
+            }
+
+            setError(null);
+            const payload = await groovRpc.request.loadTrackByPath({ path });
+            if (!payload) {
+                setError("Could not load dropped audio file.");
+                return;
+            }
+
+            await loadTrackPayload(payload, { source: "drop" });
+        },
+        [isDecoding, loadTrackPayload],
+    );
+
+    const loadTrackFromDroppedFile = useCallback(
+        async (file: File) => {
+            if (isDecoding) {
+                return;
+            }
+
+            setError(null);
+            const audioBase64 = arrayBufferToBase64(await file.arrayBuffer());
+            const payload = await groovRpc.request.loadDroppedTrack({
+                name: file.name,
+                type: file.type,
+                audioBase64,
+            });
+            if (!payload) {
+                setError("Could not load dropped audio file.");
+                return;
+            }
+
+            await loadTrackPayload(payload, { source: "drop" });
+        },
+        [isDecoding, loadTrackPayload],
+    );
+
+    useEffect(() => {
+        const onDragEnter = (event: globalThis.DragEvent) => {
+            if (!hasFilesInTransfer(event.dataTransfer) || isDecoding) {
+                return;
+            }
+
+            event.preventDefault();
+            dragDepthRef.current += 1;
+            setIsDragOver(true);
+        };
+
+        const onDragOver = (event: globalThis.DragEvent) => {
+            if (!hasFilesInTransfer(event.dataTransfer) || isDecoding) {
+                return;
+            }
+
+            event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = "copy";
+            }
+        };
+
+        const onDragLeave = (event: globalThis.DragEvent) => {
+            if (!hasFilesInTransfer(event.dataTransfer)) {
+                return;
+            }
+
+            event.preventDefault();
+            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+            if (dragDepthRef.current === 0) {
+                setIsDragOver(false);
+            }
+        };
+
+        const onDrop = (event: globalThis.DragEvent) => {
+            if (!hasFilesInTransfer(event.dataTransfer)) {
+                return;
+            }
+
+            event.preventDefault();
+            dragDepthRef.current = 0;
+            setIsDragOver(false);
+
+            if (isDecoding) {
+                return;
+            }
+
+            const path = extractDroppedFilePath(event.dataTransfer);
+            if (path) {
+                void loadTrackFromPath(path);
+                return;
+            }
+
+            const firstFile = event.dataTransfer?.files?.[0];
+            if (!firstFile) {
+                setError("Could not read dropped audio data.");
+                return;
+            }
+
+            void loadTrackFromDroppedFile(firstFile);
+        };
+
+        window.addEventListener("dragenter", onDragEnter);
+        window.addEventListener("dragover", onDragOver);
+        window.addEventListener("dragleave", onDragLeave);
+        window.addEventListener("drop", onDrop);
+
+        return () => {
+            window.removeEventListener("dragenter", onDragEnter);
+            window.removeEventListener("dragover", onDragOver);
+            window.removeEventListener("dragleave", onDragLeave);
+            window.removeEventListener("drop", onDrop);
+        };
+    }, [isDecoding, loadTrackFromDroppedFile, loadTrackFromPath]);
 
     const togglePlayback = useCallback(async () => {
         if (!hasTrackLoaded || isDecoding) {
@@ -758,15 +949,22 @@ function App() {
 
     return (
         <DeckContextProvider value={deckContextValue}>
-            <div className="app-shell">
-                <div className="app-frame">
+            <div className="relative h-[var(--app-height)] overflow-hidden p-0 md:p-2">
+                <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded border border-slate-700 bg-slate-950">
                     <TopBar />
-                    <div className="workspace">
+                    <div className="relative grid min-h-0 min-w-0 grid-cols-1 overflow-hidden lg:grid-cols-[17rem_minmax(0,1fr)]">
                         <LeftPanel />
                         <WavePanel />
                     </div>
                     <AppFooter />
                 </div>
+                {isDragOver && !isDecoding ? (
+                    <div className="pointer-events-none absolute inset-2 z-30 flex items-center justify-center rounded border-2 border-dashed border-cyan-400/80 bg-slate-900/85">
+                        <p className="font-display text-sm uppercase tracking-[0.14em] text-cyan-100">
+                            Drop Audio File To Load
+                        </p>
+                    </div>
+                ) : null}
             </div>
         </DeckContextProvider>
     );

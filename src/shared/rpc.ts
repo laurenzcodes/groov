@@ -37,6 +37,18 @@ export type GroovRPC = {
                 params: Record<string, never>;
                 response: SelectedTrackPayload | null;
             };
+            loadTrackByPath: {
+                params: { path: string };
+                response: SelectedTrackPayload | null;
+            };
+            loadDroppedTrack: {
+                params: {
+                    name: string;
+                    type: string;
+                    audioBase64: string;
+                };
+                response: SelectedTrackPayload | null;
+            };
             loadTrackById: {
                 params: { id: string };
                 response: SelectedTrackPayload | null;

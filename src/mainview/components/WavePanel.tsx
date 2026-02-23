@@ -6,7 +6,7 @@ import {
     type WheelEvent,
 } from "react";
 import { useDeckContext } from "../context/DeckContext";
-import { formatTime, formatTimeDetailed } from "../utils/format";
+import { formatTimeDetailed } from "../utils/format";
 import {
     drawOverviewBase,
     drawOverviewOverlay,
@@ -24,7 +24,6 @@ export function WavePanel() {
         visibleDuration,
         viewportStart,
         cuePoint,
-        isScrubbing,
         hasTrackLoaded,
         trackInfo,
         timelineMode,
@@ -65,10 +64,12 @@ export function WavePanel() {
               };
 
     useEffect(() => {
-        const waveformZone =
-            waveformCanvasRef.current?.closest(".waveform-zone");
-        const overviewZone =
-            overviewCanvasRef.current?.closest(".overview-strip");
+        const waveformZone = waveformCanvasRef.current?.closest(
+            '[data-waveform-zone="true"]',
+        );
+        const overviewZone = overviewCanvasRef.current?.closest(
+            '[data-overview-strip="true"]',
+        );
 
         if (!waveformZone && !overviewZone) {
             return;
@@ -305,17 +306,30 @@ export function WavePanel() {
     };
 
     return (
-        <section className="wave-panel">
-            <div className="wave-header">
-                <h2>{trackInfo?.name ?? "Waveform Preview"}</h2>
-                <div className="time-readout">
-                    <strong>{formatTimeDetailed(currentTime)}</strong>
-                    <span>/ {formatTimeDetailed(duration)}</span>
+        <section className="relative z-10 flex min-h-0 flex-col gap-2 p-2">
+            <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 py-2">
+                <h2 className="min-w-0 flex-1 truncate font-display text-base uppercase tracking-[0.08em] text-slate-100">
+                    {trackInfo?.name ?? "Waveform Preview"}
+                </h2>
+                <div className="flex items-baseline gap-2 font-mono">
+                    <strong className="text-base tabular-nums text-slate-100 md:text-lg">
+                        {formatTimeDetailed(currentTime)}
+                    </strong>
+                    <span className="text-xs tabular-nums text-slate-400 md:text-sm">
+                        / {formatTimeDetailed(duration)}
+                    </span>
                 </div>
-                <div className="timeline-mode-switch" role="radiogroup">
+                <div
+                    className="ml-auto inline-flex overflow-hidden rounded border border-slate-600"
+                    role="radiogroup"
+                >
                     <button
                         type="button"
-                        className={timelineMode === "time" ? "is-active" : ""}
+                        className={`min-w-24 border-r border-slate-600 px-3 py-1.5 font-mono text-[0.64rem] uppercase tracking-[0.1em] transition ${
+                            timelineMode === "time"
+                                ? "bg-slate-700 text-slate-100"
+                                : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                        }`}
                         onClick={() => setTimelineMode("time")}
                         aria-pressed={timelineMode === "time"}
                     >
@@ -323,7 +337,11 @@ export function WavePanel() {
                     </button>
                     <button
                         type="button"
-                        className={timelineMode === "beats" ? "is-active" : ""}
+                        className={`min-w-24 px-3 py-1.5 font-mono text-[0.64rem] uppercase tracking-[0.1em] transition ${
+                            timelineMode === "beats"
+                                ? "bg-slate-700 text-slate-100"
+                                : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                        }`}
                         onClick={() => setTimelineMode("beats")}
                         aria-pressed={timelineMode === "beats"}
                         disabled={!beatMetrics}
@@ -334,34 +352,36 @@ export function WavePanel() {
             </div>
 
             <div
-                className="waveform-zone"
+                data-waveform-zone="true"
+                className="relative flex-[0_1_clamp(210px,44vh,360px)] overflow-hidden rounded border border-slate-700 bg-slate-950"
                 onPointerDown={onWavePointerDown}
                 onPointerMove={onWavePointerMove}
                 onPointerUp={onWavePointerUp}
             >
-                <canvas ref={waveformCanvasRef} className="wave-canvas" />
+                <canvas ref={waveformCanvasRef} className="block h-full w-full" />
                 <canvas
                     ref={waveformOverlayCanvasRef}
-                    className="wave-canvas wave-overlay-canvas"
+                    className="pointer-events-none absolute inset-0 block h-full w-full"
                 />
-                {!hasTrackLoaded && (
-                    <div className="wave-overlay">
+                {!hasTrackLoaded ? (
+                    <div className="absolute inset-0 grid place-items-center bg-slate-950/75 px-4 text-center text-sm text-slate-400">
                         Load a track to render a high-resolution waveform.
                     </div>
-                )}
+                ) : null}
             </div>
 
             <div
-                className="overview-strip"
+                data-overview-strip="true"
+                className="relative h-9 overflow-hidden rounded border border-slate-700 bg-slate-950"
                 onPointerDown={onOverviewPointerDown}
                 onPointerMove={onOverviewPointerMove}
                 onPointerUp={onOverviewPointerUp}
                 onWheel={onOverviewWheel}
             >
-                <canvas ref={overviewCanvasRef} className="overview-canvas" />
+                <canvas ref={overviewCanvasRef} className="block h-full w-full" />
                 <canvas
                     ref={overviewOverlayCanvasRef}
-                    className="overview-canvas overview-overlay-canvas"
+                    className="pointer-events-none absolute inset-0 block h-full w-full"
                 />
             </div>
         </section>

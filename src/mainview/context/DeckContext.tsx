@@ -7,7 +7,7 @@ export type DeckHistoryEntry = {
     duration: number;
 };
 
-type AnalysisAction = "open" | "history" | "reanalyze" | null;
+type AnalysisAction = "open" | "history" | "reanalyze" | "drop" | null;
 
 type DeckContextValue = {
     trackInfo: TrackInfo | null;
