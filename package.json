@@ -10,11 +10,13 @@
         "dev:hmr": "concurrently \"bun run hmr\" \"bun run dev\"",
         "hmr": "vite --port 5173",
         "build": "vite build && electrobun build",
-        "build:prod": "vite build && electrobun build --channel prod",
+        "build:prod": "vite build && electrobun build --env=stable",
         "start": "bun run dev"
     },
     "dependencies": {
         "electrobun": "1.13.1",
+        "ffmpeg-static": "^5.3.0",
+        "ffprobe-static": "^3.1.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1"
     },

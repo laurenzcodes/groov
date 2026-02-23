@@ -439,17 +439,24 @@ function App() {
                     nextTrackInfo,
                     decodedBuffer.duration,
                 );
-            } catch {
+            } catch (error) {
                 if (decodeTokenRef.current !== decodeToken) {
                     return;
                 }
 
+                const message =
+                    error instanceof Error ? error.message : String(error);
+                console.error("Track decode failed", {
+                    path: payload.path,
+                    name: payload.name,
+                    error,
+                });
                 setAudioBuffer(null);
                 setWaveformData(null);
                 setTrackInfo(null);
                 setCurrentTime(0);
                 setCuePoint(null);
-                setError("Could not decode this audio file.");
+                setError(`Could not decode this audio file. ${message}`);
                 setAnalysisLabel("Failed");
             } finally {
                 if (decodeTokenRef.current === decodeToken) {

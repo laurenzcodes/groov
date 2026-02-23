@@ -177,26 +177,37 @@ const rpc = BrowserView.defineRPC<GroovRPC>({
                 resolution = 12288,
                 token,
             }) => {
-                canceledTokens.delete(token);
-                sendProgress(token, "cache", 0);
+                try {
+                    canceledTokens.delete(token);
+                    sendProgress(token, "cache", 0);
 
-                const cached = await readWaveformFromCache(analysisKey);
-                if (cached) {
-                    sendProgress(token, "cache", 1);
-                    return cached;
+                    const cached = await readWaveformFromCache(analysisKey);
+                    if (cached) {
+                        sendProgress(token, "cache", 1);
+                        return cached;
+                    }
+
+                    const analyzed = await analyzeWaveform({
+                        filePath,
+                        resolution,
+                        token,
+                        canceledTokens,
+                        onProgress: (stage, progress) =>
+                            sendProgress(token, stage, progress),
+                    });
+
+                    await writeWaveformToCache(analysisKey, analyzed);
+                    return analyzed;
+                } catch (error) {
+                    console.error("analyzeWaveform failed", {
+                        filePath,
+                        analysisKey,
+                        resolution,
+                        token,
+                        error,
+                    });
+                    throw error;
                 }
-
-                const analyzed = await analyzeWaveform({
-                    filePath,
-                    resolution,
-                    token,
-                    canceledTokens,
-                    onProgress: (stage, progress) =>
-                        sendProgress(token, stage, progress),
-                });
-
-                await writeWaveformToCache(analysisKey, analyzed);
-                return analyzed;
             },
         },
         messages: {},

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { WaveformPayload } from "../shared/rpc";
 
 export type AnalysisStage = "cache" | "probe" | "decode" | "analyze";
@@ -24,8 +26,107 @@ const EMPTY_BEAT_ANALYSIS: BeatAnalysis = {
     beatsPerBar: 4,
 };
 
+const COMMON_BIN_DIRS = [
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/opt/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin",
+];
+
+const spawnEnv = (() => {
+    const envPath = process.env.PATH ?? "";
+    const mergedPath = [...new Set([...envPath.split(":"), ...COMMON_BIN_DIRS])]
+        .filter(Boolean)
+        .join(":");
+
+    return {
+        ...process.env,
+        PATH: mergedPath,
+    };
+})();
+
+const vendorRoot = process.resourcesPath
+    ? join(process.resourcesPath, "app", "vendor")
+    : null;
+
+const ffprobePlatform = (() => {
+    if (process.platform === "darwin") {
+        return "darwin";
+    }
+    if (process.platform === "win32") {
+        return "win32";
+    }
+    return "linux";
+})();
+
+const archCandidates = (() => {
+    if (process.arch === "arm64") {
+        return ["arm64", "x64"];
+    }
+    if (process.arch === "x64") {
+        return ["x64", "arm64"];
+    }
+    return [process.arch];
+})();
+
+const pickExistingPath = (candidates: (string | null)[]) => {
+    for (const candidate of candidates) {
+        if (candidate && existsSync(candidate)) {
+            return candidate;
+        }
+    }
+    return null;
+};
+
+const ffmpegCommand =
+    pickExistingPath(
+        vendorRoot
+            ? [
+                  join(vendorRoot, "ffmpeg-static", "ffmpeg"),
+                  join(vendorRoot, "ffmpeg-static", "ffmpeg.exe"),
+              ]
+            : [],
+    ) ?? "ffmpeg";
+
+const ffprobeCommand =
+    pickExistingPath(
+        vendorRoot
+            ? archCandidates.flatMap((arch) => [
+                  join(
+                      vendorRoot,
+                      "ffprobe-static",
+                      "bin",
+                      ffprobePlatform,
+                      arch,
+                      "ffprobe",
+                  ),
+                  join(
+                      vendorRoot,
+                      "ffprobe-static",
+                      "bin",
+                      ffprobePlatform,
+                      arch,
+                      "ffprobe.exe",
+                  ),
+              ])
+            : [],
+    ) ?? "ffprobe";
+
 const runCommand = async (cmd: string[]) => {
-    const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
+    let proc: ReturnType<typeof Bun.spawn>;
+    try {
+        proc = Bun.spawn(cmd, {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: spawnEnv,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to start command "${cmd[0]}": ${message}`);
+    }
     const [stdout, stderr, code] = await Promise.all([
         new Response(proc.stdout).text(),
         new Response(proc.stderr).text(),
@@ -43,7 +144,7 @@ const decodeMonoPcm = async (
     filePath: string,
 ): Promise<{ samples: Float32Array; sampleRate: number }> => {
     const probeRaw = await runCommand([
-        "ffprobe",
+        ffprobeCommand,
         "-v",
         "error",
         "-select_streams",
@@ -59,7 +160,7 @@ const decodeMonoPcm = async (
 
     const decodeProc = Bun.spawn(
         [
-            "ffmpeg",
+            ffmpegCommand,
             "-v",
             "error",
             "-i",
@@ -70,7 +171,11 @@ const decodeMonoPcm = async (
             "f32le",
             "pipe:1",
         ],
-        { stdout: "pipe", stderr: "pipe" },
+        {
+            stdout: "pipe",
+            stderr: "pipe",
+            env: spawnEnv,
+        },
     );
 
     const [pcmBuffer, stderr, code] = await Promise.all([
