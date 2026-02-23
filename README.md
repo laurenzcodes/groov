@@ -55,7 +55,7 @@ bun run build:prod
 - Windows (on Windows runner/machine): `artifacts/stable-win-x64-Groov-Setup.zip`
 - Linux (on Linux runner/machine): `artifacts/stable-linux-x64-Groov-Setup.tar.gz`
 
-This project does not currently publish signed/notarized release binaries.
+This project currently focuses on Windows release artifacts.
 
 ## Run From Source Builds
 
@@ -85,6 +85,8 @@ bunx electrobun build --env=stable
 `artifacts/stable-win-x64-Groov-Setup.zip`
 3. Extract the zip and run `Groov-Setup.exe`.
 
+Note: a true standalone single-file `Groov-Setup.exe` is not supported by the current Electrobun Windows packaging flow. The zip is required because it contains installer sidecar payload files.
+
 ### Linux
 
 1. Build on Linux:
@@ -113,3 +115,10 @@ src/
   mainview/    # React UI (panels, waveform canvas, playback controls)
   shared/      # Shared RPC types and assets
 ```
+
+## Windows Release Automation
+
+- Workflow: `.github/workflows/windows-release.yml`
+- Trigger by pushing tags like `win-v1.0.0`
+- Uploads the canonical Windows installer package only:
+  - `stable-win-x64-Groov-Setup.zip`
