@@ -24,7 +24,6 @@ Load a track, inspect a high-resolution waveform, detect tempo/beat grid, and ju
 ## Prerequisites
 
 - [Bun](https://bun.sh/)
-- `ffmpeg` and `ffprobe` available on your `PATH` (required for waveform and beat analysis)
 
 ## Development
 
@@ -43,11 +42,60 @@ When using HMR, Vite runs on `http://localhost:5173` and the desktop app connect
 ## Build
 
 ```bash
-# Build app
+# Build local dev channel app
 bun run build
 
-# Build production channel
+# Build stable channel app
 bun run build:prod
+```
+
+### Build Outputs
+
+- macOS: `build/stable-macos-arm64/Groov.app`
+- Windows (on Windows runner/machine): `artifacts/stable-win-x64-Groov-Setup.zip`
+- Linux (on Linux runner/machine): `artifacts/stable-linux-x64-Groov-Setup.tar.gz`
+
+This project does not currently publish signed/notarized release binaries.
+
+## Run From Source Builds
+
+### macOS
+
+1. Build:
+```bash
+bun run build:prod
+```
+2. Start app:
+```bash
+open build/stable-macos-arm64/Groov.app
+```
+3. If macOS blocks first launch due to quarantine:
+```bash
+xattr -dr com.apple.quarantine build/stable-macos-arm64/Groov.app
+open build/stable-macos-arm64/Groov.app
+```
+
+### Windows
+
+1. Build on Windows:
+```bash
+bunx electrobun build --env=stable
+```
+2. Use the generated installer package:
+`artifacts/stable-win-x64-Groov-Setup.zip`
+3. Extract the zip and run `Groov-Setup.exe`.
+
+### Linux
+
+1. Build on Linux:
+```bash
+bunx electrobun build --env=stable
+```
+2. Extract and run the installer:
+```bash
+tar -xzf artifacts/stable-linux-x64-Groov-Setup.tar.gz
+chmod +x installer
+./installer
 ```
 
 ## Keyboard Shortcuts
