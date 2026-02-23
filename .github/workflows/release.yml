@@ -76,7 +76,8 @@ jobs:
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
             find build -maxdepth 3 -type f -name '*.exe' -exec cp {} release-artifacts/ \;
           else
-            find build -maxdepth 3 -type f \( -name '*.AppImage' -o -name '*-linux-*' \) -exec cp {} release-artifacts/ \;
+            # Prefer Linux runnable artifacts, but fall back to tarball if needed.
+            find build -maxdepth 4 -type f \( -name '*.AppImage' -o -name '*.run' -o -name '*.bin' -o -name '*.tar.zst' \) -exec cp {} release-artifacts/ \;
           fi
 
           ls -la release-artifacts
